@@ -7,17 +7,19 @@
 using namespace robosense::lidar;
 
 namespace rslidar_driver {
-class RslidarSdkComposableNode : public rclcpp::Node {
+class RslidarSdkComponent : public rclcpp::Node {
 public:
-  RslidarSdkComposableNode(rclcpp::NodeOptions const & options)
-  : Node("rslidar_sdk_composable_node", options)
+  RslidarSdkComponent(rclcpp::NodeOptions const & options)
+  : Node("rslidar_sdk_component_node", options)
   {
+    signal(SIGINT, signalHandler);
+
     std::string config_path;
     config_path = (std::string)PROJECT_PATH;
     config_path += "/config/config.yaml";
 
-    this->declare_parameter("config_path", config_path);
-    this->get_parameter("config_path", config_path);
+    declare_parameter("config_path", config_path);
+    get_parameter("config_path", config_path);
 
     RS_MSG << "config_path " << config_path << RS_REND;
     YAML::Node config;
@@ -40,22 +42,20 @@ public:
   }
 
   std::shared_ptr<NodeManager> demo_ptr;
+
+  static void signalHandler(int)
+  {
+    rclcpp::shutdown();
+    exit(0);
+  }
 };
 }
 
-static void signalHandler(int)
-{
-  rclcpp::shutdown();
-  exit(0);
-}
 
-int main(int argc, char** argv)
-{
-  signal(SIGINT, signalHandler);
-  rclcpp::init(argc, argv);
-  auto node = std::make_shared<rslidar_driver::RslidarSdkComposableNode>(rclcpp::NodeOptions());
-  rclcpp::spin(node->get_node_base_interface());
-  rclcpp::shutdown();
 
-  return 0;
-}
+#include "rclcpp_components/register_node_macro.hpp"
+
+// Register the component with class_loader.
+// This acts as a sort of entry point, allowing the component to be discoverable
+// when its library is being loaded into a running process.
+RCLCPP_COMPONENTS_REGISTER_NODE(rslidar_driver::RslidarSdkComponent)

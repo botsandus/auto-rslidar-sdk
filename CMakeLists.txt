@@ -77,70 +77,19 @@ message(=============================================================)
 # Dependencies Setup
 #========================
 
-#ROS#
-find_package(roscpp 1.12 QUIET)
-
-if(roscpp_FOUND)
-
-  message(=============================================================)
-  message("-- ROS Found. ROS Support is turned On.")
-  message(=============================================================)
-
-  add_definitions(-DROS_FOUND)
-
-  find_package(roslib QUIET)
-  include_directories(${roscpp_INCLUDE_DIRS} ${roslib_INCLUDE_DIRS})
-  set(ROS_LIBS ${roscpp_LIBRARIES} ${roslib_LIBRARIES})
-
-  #Catkin#
-  if(${COMPILE_METHOD} STREQUAL "CATKIN")
-
-    add_definitions(-DRUN_IN_ROS_WORKSPACE)
-
-    find_package(catkin REQUIRED COMPONENTS
-      roscpp
-      sensor_msgs
-      roslib)
-
-    catkin_package(CATKIN_DEPENDS 
-      sensor_msgs 
-      roslib)
-
-  endif(${COMPILE_METHOD} STREQUAL "CATKIN")
-
-else(roscpp_FOUND)
-
-  message(=============================================================)
-  message("-- ROS Not Found. ROS Support is turned Off.")
-  message(=============================================================)
-
-endif(roscpp_FOUND)
 
 #ROS2#
-find_package(rclcpp QUIET)
+find_package(rclcpp REQUIRED)
 
-if(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
+add_definitions(-DROS2_FOUND)
+include_directories(${rclcpp_INCLUDE_DIRS})
+set(CMAKE_CXX_STANDARD 17)
 
-  message(=============================================================)
-  message("-- ROS2 Found. ROS2 Support is turned On.")
-  message(=============================================================)
-
-  add_definitions(-DROS2_FOUND)
-  include_directories(${rclcpp_INCLUDE_DIRS})
-  set(CMAKE_CXX_STANDARD 14)
-
-  find_package(ament_cmake REQUIRED)
-  find_package(sensor_msgs REQUIRED)
-  find_package(rslidar_msg REQUIRED)
-  find_package(std_msgs REQUIRED)                      
-
-else(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
-
-  message(=============================================================)
-  message("-- ROS2 Not Found. ROS2 Support is turned Off.")
-  message(=============================================================)
-
-endif(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
+find_package(ament_cmake REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(rslidar_msg REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(rclcpp_components REQUIRED)
 
 #Others#
 find_package(yaml-cpp REQUIRED)
@@ -161,61 +110,55 @@ add_executable(rslidar_sdk_node
                node/rslidar_sdk_node.cpp
                src/manager/node_manager.cpp)
 
-target_link_libraries(rslidar_sdk_node                   
+target_link_libraries(rslidar_sdk_node
                       ${YAML_CPP_LIBRARIES}
                       ${rs_driver_LIBRARIES})
 
-add_executable(rslidar_sdk_composable_node
-               node/rslidar_sdk_composable_node.cpp
-               src/manager/node_manager.cpp)
+add_library(rslidar_sdk_component SHARED
+    node/rslidar_sdk_component.cpp
+    src/manager/node_manager.cpp
+)
 
-target_link_libraries(rslidar_sdk_composable_node
-                      ${YAML_CPP_LIBRARIES}
-                      ${rs_driver_LIBRARIES})
+target_compile_definitions(rslidar_sdk_component
+    PRIVATE "COMPOSITION_BUILDING_DLL"
+)
+target_link_libraries(rslidar_sdk_component
+  ${YAML_CPP_LIBRARIES}
+  ${rs_driver_LIBRARIES}
+)
 
+ament_target_dependencies(rslidar_sdk_component
+  rclcpp
+  std_msgs
+  sensor_msgs
+  rslidar_msg
+  rclcpp_components
+)
 
-#Ros#
-if(roscpp_FOUND)
+rclcpp_components_register_nodes(rslidar_sdk_component "rslidar_driver::RslidarSdkComponent")
 
-  target_link_libraries(rslidar_sdk_node 
-    ${ROS_LIBS})
+# Install components
+install(TARGETS rslidar_sdk_component
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
 
-  if(${COMPILE_METHOD} STREQUAL "CATKIN")
+ament_target_dependencies(rslidar_sdk_node
+  rclcpp
+  std_msgs
+  sensor_msgs
+  rslidar_msg)
 
-    install(TARGETS rslidar_sdk_node
-            RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-            LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-            ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+install(TARGETS
+  rslidar_sdk_node
+  DESTINATION lib/${PROJECT_NAME})
 
-  endif()
+install(DIRECTORY
+  launch
+  rviz
+  DESTINATION share/${PROJECT_NAME})
 
-endif(roscpp_FOUND)
-
-#Ros2#
-if(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
-
-  ament_target_dependencies(rslidar_sdk_node 
-    rclcpp 
-    std_msgs 
-    sensor_msgs 
-    rslidar_msg)
-
-  ament_target_dependencies(rslidar_sdk_composable_node
-    rclcpp
-    std_msgs
-    sensor_msgs
-    rslidar_msg)
-
-  install(TARGETS
-    rslidar_sdk_node rslidar_sdk_composable_node
-    DESTINATION lib/${PROJECT_NAME})
-
-  install(DIRECTORY
-    launch
-    rviz
-    DESTINATION share/${PROJECT_NAME})
-
-  ament_package()
-
-endif(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
+ament_export_libraries(rslidar_sdk_component)
+ament_package()
 
