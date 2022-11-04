@@ -165,6 +165,15 @@ target_link_libraries(rslidar_sdk_node
                       ${YAML_CPP_LIBRARIES}
                       ${rs_driver_LIBRARIES})
 
+add_executable(rslidar_sdk_composable_node
+               node/rslidar_sdk_composable_node.cpp
+               src/manager/node_manager.cpp)
+
+target_link_libraries(rslidar_sdk_composable_node
+                      ${YAML_CPP_LIBRARIES}
+                      ${rs_driver_LIBRARIES})
+
+
 #Ros#
 if(roscpp_FOUND)
 
@@ -191,8 +200,14 @@ if(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
     sensor_msgs 
     rslidar_msg)
 
+  ament_target_dependencies(rslidar_sdk_composable_node
+    rclcpp
+    std_msgs
+    sensor_msgs
+    rslidar_msg)
+
   install(TARGETS
-    rslidar_sdk_node
+    rslidar_sdk_node rslidar_sdk_composable_node
     DESTINATION lib/${PROJECT_NAME})
 
   install(DIRECTORY
