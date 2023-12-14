@@ -1,6 +1,27 @@
-# CHANGELOG
-
+# CHANGELOG 
 ## Unreleased
+
+## v1.5.10 - 2023-02-17
+
+### Changed
+- Merge RSBPV4 into RSBP
+
+
+## v1.5.9 - 2023-02-17
+
+### Changed
+- Increase sending DDS buffer queue to avoid packet loss
+
+
+## v1.5.8 - 2022-12-09
+
+### Added
+- Support ROS2/Humble Hawksbill
+- rename RSEOS as RSE1
+
+### Fixed
+- Fix wrong widthxheight while ros_send_by_rows=true
+
 
 ## v1.5.7 - 2022-10-09
 
