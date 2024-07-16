@@ -27,7 +27,7 @@ lidar:
       ros_send_point_cloud_topic: /lidars/bpearl_front_left      #Topic used to send point cloud through ROS
   - driver:
       device_ip: 172.16.0.12
-      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSBPV4, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48,
+      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48, 
                                    #             RSM1, RSM1_JUMBO, RSM2, RSE1, RSMX.
       msop_port: 6799              #Msop port of lidar
       difop_port: 7888             #Difop port of lidar
@@ -46,7 +46,7 @@ lidar:
       ros_send_point_cloud_topic: /lidars/rslidar_front_top      #Topic used to send point cloud through ROS
   - driver:
       device_ip: 172.16.0.21
-      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSBPV4, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48,
+      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48,
                                    #             RSM1, RSM1_JUMBO, RSM2, RSE1, RSMX.
       msop_port: 6700              #Msop port of lidar
       difop_port: 7789             #Difop port of lidar
