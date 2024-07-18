@@ -8,8 +8,8 @@ common:
 lidar:
   - driver:
       device_ip: 172.16.0.11
-      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSBPV4, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48,
-                                   #             RSM1, RSM2, RSEOS, RSM1_JUMBO
+      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48, 
+                                   #             RSM1, RSM1_JUMBO, RSM2, RSE1, RSMX.
       msop_port: 6699              #Msop port of lidar
       difop_port: 7788             #Difop port of lidar
       start_angle: 0               #Start angle of point cloud
@@ -18,7 +18,7 @@ lidar:
       min_distance: 0.1            #Minimum distance of point cloud
       max_distance: 200            #Maximum distance of point cloud
       use_lidar_clock: false       #True--Use the lidar clock as the message timestamp
-                                   #False-- Use the system clock as the timestamp
+                                   #False-- Use the system clock as the timestamp                        
       pcap_path: /home/robosense/lidar.pcap #The path of pcap file
     ros:
       ros_frame_id: bpearl_front_left_frame                           #Frame id of packet message and point cloud message
@@ -27,8 +27,8 @@ lidar:
       ros_send_point_cloud_topic: /lidars/bpearl_front_left      #Topic used to send point cloud through ROS
   - driver:
       device_ip: 172.16.0.12
-      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSBPV4, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48,
-                                   #             RSM1, RSM2, RSEOS, RSM1_JUMBO
+      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48, 
+                                   #             RSM1, RSM1_JUMBO, RSM2, RSE1, RSMX.
       msop_port: 6799              #Msop port of lidar
       difop_port: 7888             #Difop port of lidar
       start_angle: 0               #Start angle of point cloud
@@ -46,8 +46,8 @@ lidar:
       ros_send_point_cloud_topic: /lidars/rslidar_front_top      #Topic used to send point cloud through ROS
   - driver:
       device_ip: 172.16.0.21
-      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSBPV4, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48,
-                                   #             RSM1, RSM2, RSEOS, RSM1_JUMBO
+      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48,
+                                   #             RSM1, RSM1_JUMBO, RSM2, RSE1, RSMX.
       msop_port: 6700              #Msop port of lidar
       difop_port: 7789             #Difop port of lidar
       start_angle: 0               #Start angle of point cloud
