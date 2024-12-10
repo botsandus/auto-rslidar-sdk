@@ -40,3 +40,4 @@ typedef PointCloudT<PointXYZIRT> LidarPointCloudMsg;
 typedef PointCloudT<PointXYZI> LidarPointCloudMsg;
 #endif
 
+#include "rs_driver/msg/imu_data_msg.hpp"

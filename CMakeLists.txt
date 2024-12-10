@@ -5,12 +5,7 @@ project(rslidar_sdk)
 #=======================================
 # Custom Point Type (XYZI, XYZIRT)
 #=======================================
-set(POINT_TYPE XYZI)
-
-#=======================================
-# Compile setup (ORIGINAL, CATKIN, COLCON)
-#=======================================
-set(COMPILE_METHOD COLCON)
+set(POINT_TYPE XYZIRT)
 
 option(ENABLE_TRANSFORM "Enable transform functions" OFF)
 if(${ENABLE_TRANSFORM})
@@ -25,25 +20,42 @@ if(${ENABLE_EPOLL_RECEIVE})
   add_definitions("-DENABLE_EPOLL_RECEIVE")
 endif(${ENABLE_EPOLL_RECEIVE})
 
-option(ENABLE_DOUBLE_RCVBUF "Enable double size of RCVBUF" OFF)
-if(${ENABLE_DOUBLE_RCVBUF})
-  add_definitions("-DENABLE_DOUBLE_RCVBUF")
-endif(${ENABLE_DOUBLE_RCVBUF})
+option(ENABLE_MODIFY_RECVBUF "Enable modify size of RECVBUF" ON)
+if(${ENABLE_MODIFY_RECVBUF})
+  add_definitions("-DENABLE_MODIFY_RECVBUF")
+endif(${ENABLE_MODIFY_RECVBUF})
 
 option(ENABLE_WAIT_IF_QUEUE_EMPTY "Enable waiting for a while in handle thread if the queue is empty" OFF)
 if(${ENABLE_WAIT_IF_QUEUE_EMPTY})
   add_definitions("-DENABLE_WAIT_IF_QUEUE_EMPTY")
 endif(${ENABLE_WAIT_IF_QUEUE_EMPTY})
 
+option(ENABLE_DIFOP_PARSE "Enable parsing DIFOP Packet" ON)
+if(${ENABLE_DIFOP_PARSE})
+  add_definitions("-DENABLE_DIFOP_PARSE")
+endif(${ENABLE_DIFOP_PARSE})
+
 option(ENABLE_STAMP_WITH_LOCAL "Enable stamp point cloud with local time" OFF)
 if(${ENABLE_STAMP_WITH_LOCAL})
   add_definitions("-DENABLE_STAMP_WITH_LOCAL")
 endif(${ENABLE_STAMP_WITH_LOCAL})
 
+
 option(ENABLE_SOURCE_PACKET_LEGACY "Enable ROS Source of MSOP/DIFOP Packet v1.3.x" OFF)
 if(${ENABLE_SOURCE_PACKET_LEGACY})
   add_definitions("-DENABLE_SOURCE_PACKET_LEGACY")
 endif(${ENABLE_SOURCE_PACKET_LEGACY})
+
+option(ENABLE_IMU_DATA_PARSE           "Enable imu data parse" ON)
+if(${ENABLE_IMU_DATA_PARSE})
+
+  message(=============================================================)
+  message("-- Enable imu data parse")
+  message(=============================================================)
+
+  add_definitions("-DENABLE_IMU_DATA_PARSE")
+
+endif(${ENABLE_IMU_DATA_PARSE})
 
 #========================
 # Project details / setup
@@ -92,21 +104,16 @@ if(roscpp_FOUND)
   include_directories(${roscpp_INCLUDE_DIRS} ${roslib_INCLUDE_DIRS})
   set(ROS_LIBS ${roscpp_LIBRARIES} ${roslib_LIBRARIES})
 
-  #Catkin#
-  if(${COMPILE_METHOD} STREQUAL "CATKIN")
+  add_definitions(-DRUN_IN_ROS_WORKSPACE)
 
-    add_definitions(-DRUN_IN_ROS_WORKSPACE)
+  find_package(catkin REQUIRED COMPONENTS
+    roscpp
+    sensor_msgs
+    roslib)
 
-    find_package(catkin REQUIRED COMPONENTS
-      roscpp
-      sensor_msgs
-      roslib)
-
-    catkin_package(CATKIN_DEPENDS 
-      sensor_msgs 
-      roslib)
-
-  endif(${COMPILE_METHOD} STREQUAL "CATKIN")
+  catkin_package(CATKIN_DEPENDS 
+    sensor_msgs 
+    roslib)
 
 else(roscpp_FOUND)
 
@@ -119,8 +126,7 @@ endif(roscpp_FOUND)
 #ROS2#
 find_package(rclcpp QUIET)
 
-if(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
-
+if(rclcpp_FOUND)
   message(=============================================================)
   message("-- ROS2 Found. ROS2 Support is turned On.")
   message(=============================================================)
@@ -134,13 +140,11 @@ if(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
   find_package(rslidar_msg REQUIRED)
   find_package(std_msgs REQUIRED)                      
 
-else(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
-
+else(rclcpp_FOUND)
   message(=============================================================)
   message("-- ROS2 Not Found. ROS2 Support is turned Off.")
   message(=============================================================)
-
-endif(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
+endif(rclcpp_FOUND)
 
 #Others#
 find_package(yaml-cpp REQUIRED)
@@ -165,34 +169,21 @@ target_link_libraries(rslidar_sdk_node
                       ${YAML_CPP_LIBRARIES}
                       ${rs_driver_LIBRARIES})
 
-add_executable(rslidar_sdk_composable_node
-               node/rslidar_sdk_composable_node.cpp
-               src/manager/node_manager.cpp)
-
-target_link_libraries(rslidar_sdk_composable_node
-                      ${YAML_CPP_LIBRARIES}
-                      ${rs_driver_LIBRARIES})
-
-
 #Ros#
 if(roscpp_FOUND)
 
   target_link_libraries(rslidar_sdk_node 
     ${ROS_LIBS})
 
-  if(${COMPILE_METHOD} STREQUAL "CATKIN")
-
-    install(TARGETS rslidar_sdk_node
-            RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-            LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-            ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-
-  endif()
+  install(TARGETS rslidar_sdk_node
+          RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+          LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+          ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
 endif(roscpp_FOUND)
 
 #Ros2#
-if(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
+if(rclcpp_FOUND)
 
   ament_target_dependencies(rslidar_sdk_node 
     rclcpp 
@@ -200,14 +191,8 @@ if(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
     sensor_msgs 
     rslidar_msg)
 
-  ament_target_dependencies(rslidar_sdk_composable_node
-    rclcpp
-    std_msgs
-    sensor_msgs
-    rslidar_msg)
-
   install(TARGETS
-    rslidar_sdk_node rslidar_sdk_composable_node
+    rslidar_sdk_node
     DESTINATION lib/${PROJECT_NAME})
 
   install(DIRECTORY
@@ -217,5 +202,5 @@ if(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
 
   ament_package()
 
-endif(rclcpp_FOUND AND ${COMPILE_METHOD} STREQUAL "COLCON")
+endif(rclcpp_FOUND)
 

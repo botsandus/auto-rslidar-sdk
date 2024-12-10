@@ -59,13 +59,19 @@ protected:
   std::shared_ptr<LidarPointCloudMsg> getPointCloud(void);
   void putPointCloud(std::shared_ptr<LidarPointCloudMsg> msg);
   void putPacket(const Packet& msg);
+  std::shared_ptr<ImuData> getImuData(void);
+  void putImuData(const std::shared_ptr<ImuData>& msg);
   void putException(const lidar::Error& msg);
   void processPointCloud();
+  void processImuData();
 
   std::shared_ptr<lidar::LidarDriver<LidarPointCloudMsg>> driver_ptr_;
   SyncQueue<std::shared_ptr<LidarPointCloudMsg>> free_point_cloud_queue_;
   SyncQueue<std::shared_ptr<LidarPointCloudMsg>> point_cloud_queue_;
+  SyncQueue<std::shared_ptr<ImuData>> free_imu_data_queue_;
+  SyncQueue<std::shared_ptr<ImuData>> imu_data_queue_;
   std::thread point_cloud_process_thread_;
+  std::thread imu_data_process_thread_;
   bool to_exit_process_;
 };
 
@@ -82,6 +88,7 @@ inline void SourceDriver::init(const YAML::Node& config)
   // input related
   yamlRead<uint16_t>(driver_config, "msop_port", driver_param.input_param.msop_port, 6699);
   yamlRead<uint16_t>(driver_config, "difop_port", driver_param.input_param.difop_port, 7788);
+  yamlRead<uint16_t>(driver_config, "imu_port", driver_param.input_param.imu_port, 6688);
   yamlRead<std::string>(driver_config, "host_address", driver_param.input_param.host_address, "0.0.0.0");
   yamlRead<std::string>(driver_config, "group_address", driver_param.input_param.group_address, "0.0.0.0");
   yamlRead<bool>(driver_config, "use_vlan", driver_param.input_param.use_vlan, false);
@@ -90,7 +97,7 @@ inline void SourceDriver::init(const YAML::Node& config)
   yamlRead<bool>(driver_config, "pcap_repeat", driver_param.input_param.pcap_repeat, true);
   yamlRead<uint16_t>(driver_config, "user_layer_bytes", driver_param.input_param.user_layer_bytes, 0);
   yamlRead<uint16_t>(driver_config, "tail_layer_bytes", driver_param.input_param.tail_layer_bytes, 0);
-
+  yamlRead<uint32_t>(driver_config, "socket_recv_buf", driver_param.input_param.socket_recv_buf, 106496);
   // decoder related
   std::string lidar_type;
   yamlReadAbort<std::string>(driver_config, "lidar_type", lidar_type);
@@ -147,6 +154,11 @@ inline void SourceDriver::init(const YAML::Node& config)
       std::bind(&SourceDriver::putException, this, std::placeholders::_1));
   point_cloud_process_thread_ = std::thread(std::bind(&SourceDriver::processPointCloud, this));
 
+#ifdef ENABLE_IMU_DATA_PARSE
+  driver_ptr_->regImuDataCallback(std::bind(&SourceDriver::getImuData, this),std::bind(&SourceDriver::putImuData, this, std::placeholders::_1));
+  imu_data_process_thread_ = std::thread(std::bind(&SourceDriver::processImuData, this));
+#endif
+
   if (!driver_ptr_->init(driver_param))
   {
     RS_ERROR << "Driver Initialize Error...." << RS_REND;
@@ -186,7 +198,6 @@ inline std::shared_ptr<LidarPointCloudMsg> SourceDriver::getPointCloud(void)
 inline void SourceDriver::regPacketCallback(DestinationPacket::Ptr dst)
 {
   Source::regPacketCallback(dst);
-
   if (pkt_cb_vec_.size() == 1)
   {
     driver_ptr_->regPacketCallback(
@@ -203,7 +214,34 @@ void SourceDriver::putPointCloud(std::shared_ptr<LidarPointCloudMsg> msg)
 {
   point_cloud_queue_.push(msg);
 }
+inline std::shared_ptr<ImuData> SourceDriver::getImuData(void)
+{
+  std::shared_ptr<ImuData> imuDataPtr = free_imu_data_queue_.pop();
+  if (imuDataPtr.get() != NULL)
+  {
+    return imuDataPtr;
+  }
+  return std::make_shared<ImuData>();
+}
+void SourceDriver::putImuData(const std::shared_ptr<ImuData>& msg)
+{
+  imu_data_queue_.push(msg);
+}
 
+void SourceDriver::processImuData()
+{
+  while (!to_exit_process_)
+  {
+    std::shared_ptr<ImuData> msg = imu_data_queue_.popWait(100);
+    if (msg.get() == NULL)
+    {
+      continue;
+    }
+    sendImuData(msg);
+ 
+    free_imu_data_queue_.push(msg);
+  }
+}
 void SourceDriver::processPointCloud()
 {
   while (!to_exit_process_)
@@ -213,9 +251,16 @@ void SourceDriver::processPointCloud()
     {
       continue;
     }
-
     sendPointCloud(msg);
+    RS_MSG << "msg: " << msg->seq << " point cloud size: " << msg->points.size() << RS_REND;
 
+  //     DeviceInfo deviceInfo;
+  //   if(driver_ptr_->getDeviceInfo(deviceInfo))
+  // {
+  //   RS_DEBUG << "qx: " <<  std::fixed << std::setprecision(7)  << deviceInfo.qx  << ",qy:" << deviceInfo.qy << ",qz:" << deviceInfo.qz << ",qw:" << deviceInfo.qw  << ",x:" << deviceInfo.x << ",y:" << deviceInfo.y << ",z:" << deviceInfo.z << std::endl;
+  // }else{
+  //   RS_WARNING << "get device info failed" << RS_REND;
+  // }
     free_point_cloud_queue_.push(msg);
   }
 }

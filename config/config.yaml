@@ -1,66 +1,34 @@
 common:
-  msg_source: 1                                         #0: not use Lidar
-                                                        #1: packet message comes from online Lidar
+  msg_source: 3                                         #0: not use Lidar
+                                                 #1: packet message comes from online Lidar
                                                         #2: packet message comes from ROS or ROS2
                                                         #3: packet message comes from Pcap file
   send_packet_ros: false                                #true: Send packets through ROS or ROS2(Used to record packet)
   send_point_cloud_ros: true                            #true: Send point cloud through ROS or ROS2
 lidar:
   - driver:
-      device_ip: 172.16.0.11
-      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSBPV4, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48,
-                                   #             RSM1, RSM2, RSEOS, RSM1_JUMBO
-      msop_port: 6699              #Msop port of lidar
+      lidar_type: RSAIRY             #LiDAR type - RS16, RS32, RSBP, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48, 
+                                   #             RSM1, RSM1_JUMBO, RSM2, RSM3, RSE1, RSMX.
+      msop_port: 6699             #Msop port of lidar
       difop_port: 7788             #Difop port of lidar
+      imu_port: 6688             #Imu port of lidar
       start_angle: 0               #Start angle of point cloud
       end_angle: 360               #End angle of point cloud 
-      wait_for_difop: true
-      min_distance: 0.1            #Minimum distance of point cloud
+      min_distance: 0.2            #Minimum distance of point cloud
       max_distance: 200            #Maximum distance of point cloud
       use_lidar_clock: false       #True--Use the lidar clock as the message timestamp
-                                   #False-- Use the system clock as the timestamp
-      pcap_path: /home/robosense/lidar.pcap #The path of pcap file
-    ros:
-      ros_frame_id: bpearl_front_left_frame                           #Frame id of packet message and point cloud message
-      ros_recv_packet_topic: /rslidar_packets          #Topic used to receive lidar packets from ROS
-      ros_send_packet_topic: /rslidar_packets          #Topic used to send lidar packets through ROS
-      ros_send_point_cloud_topic: /lidars/bpearl_front_left      #Topic used to send point cloud through ROS
-  - driver:
-      device_ip: 172.16.0.12
-      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSBPV4, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48,
-                                   #             RSM1, RSM2, RSEOS, RSM1_JUMBO
-      msop_port: 6799              #Msop port of lidar
-      difop_port: 7888             #Difop port of lidar
-      start_angle: 0               #Start angle of point cloud
-      end_angle: 360               #End angle of point cloud
+                                   #False-- Use the system clock as the timestamp   
+      ts_first_point: true       # true: time-stamp point cloud with the first point; false: with the last point;  
+      pcap_rate: 3.65
       wait_for_difop: true
-      min_distance: 0.1            #Minimum distance of point cloud
-      max_distance: 200            #Maximum distance of point cloud
-      use_lidar_clock: false       #True--Use the lidar clock as the message timestamp
-                                   #False-- Use the system clock as the timestamp
-      pcap_path: /home/robosense/lidar.pcap #The path of pcap file
-    ros:
-      ros_frame_id: bpearl_front_top_frame                           #Frame id of packet message and point cloud message
-      ros_recv_packet_topic: /rslidar_packets          #Topic used to receive lidar packets from ROS
-      ros_send_packet_topic: /rslidar_packets          #Topic used to send lidar packets through ROS
-      ros_send_point_cloud_topic: /lidars/rslidar_front_top      #Topic used to send point cloud through ROS
-  - driver:
-      device_ip: 172.16.0.21
-      lidar_type: RSBP             #LiDAR type - RS16, RS32, RSBP, RSBPV4, RSHELIOS, RSHELIOS_16P, RS128, RS80, RS48, RSP128, RSP80, RSP48,
-                                   #             RSM1, RSM2, RSEOS, RSM1_JUMBO
-      msop_port: 6700              #Msop port of lidar
-      difop_port: 7789             #Difop port of lidar
-      start_angle: 0               #Start angle of point cloud
-      end_angle: 360               #End angle of point cloud
-      wait_for_difop: true
-      min_distance: 0.1            #Minimum distance of point cloud
-      max_distance: 200            #Maximum distance of point cloud
-      use_lidar_clock: false       #True--Use the lidar clock as the message timestamp
-                                   #False-- Use the system clock as the timestamp
-      pcap_path: /home/robosense/lidar.pcap #The path of pcap file
-    ros:
-      ros_frame_id: bpearl_back_right_frame                           #Frame id of packet message and point cloud message
-      ros_recv_packet_topic: /rslidar_packets          #Topic used to receive lidar packets from ROS
-      ros_send_packet_topic: /rslidar_packets          #Topic used to send lidar packets through ROS
-      ros_send_point_cloud_topic: /lidars/rslidar_back_right      #Topic used to send point cloud through ROS
+      # config_from_file: true    
+      # angle_path: /home/sti/PCAP/test_pcap/0350/AIRY_A1/Angle.csv
+      pcap_path: /home/sti/PCAP/test_pcap/0350/B0sn111_FixedAngle.pcap #The path of pcap file
 
+      #rsview_TwoWvs \ airy_yijia02
+    ros:
+      ros_frame_id: rslidar                           #Frame id of packet message and point cloud message
+      ros_recv_packet_topic: /rslidar_packets          #Topic used to receive lidar packets from ROS
+      ros_send_packet_topic: /rslidar_packets          #Topic used to send lidar packets through ROS
+      ros_send_imu_data_topic: /rslidar_imu_data         #Topic used to send imu data through ROS
+      ros_send_point_cloud_topic: /rslidar_points      #Topic used to send point cloud through ROS
