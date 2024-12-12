@@ -252,7 +252,7 @@ void SourceDriver::processPointCloud()
       continue;
     }
     sendPointCloud(msg);
-    RS_MSG << "msg: " << msg->seq << " point cloud size: " << msg->points.size() << RS_REND;
+    // RS_MSG << "msg: " << msg->seq << " point cloud size: " << msg->points.size() << RS_REND;
 
   //     DeviceInfo deviceInfo;
   //   if(driver_ptr_->getDeviceInfo(deviceInfo))
