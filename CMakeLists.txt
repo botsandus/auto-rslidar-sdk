@@ -188,7 +188,7 @@ endif(roscpp_FOUND)
 #Ros2#
 if(rclcpp_FOUND)
 
-  ament_target_dependencies(rslidar_sdk_node 
+  target_link_libraries(rslidar_sdk_node 
     rclcpp 
     std_msgs 
     sensor_msgs 
