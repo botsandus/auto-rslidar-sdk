@@ -304,7 +304,7 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
   if (include_ring_timestamp)
   {
     offset = addPointField(ros_msg, "ring", 1, sensor_msgs::msg::PointField::UINT16, offset);
-    offset = addPointField(ros_msg, "timestamp", 1, sensor_msgs::msg::PointField::FLOAT64, offset);
+    offset = addPointField(ros_msg, "t", 1, sensor_msgs::msg::PointField::UINT32, offset);
   }
 
   ros_msg.point_step = offset;
@@ -318,11 +318,11 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
   sensor_msgs::PointCloud2Iterator<float> iter_intensity_(ros_msg, "intensity");
 
   std::unique_ptr<sensor_msgs::PointCloud2Iterator<uint16_t>> iter_ring_ptr;
-  std::unique_ptr<sensor_msgs::PointCloud2Iterator<double>> iter_timestamp_ptr;
+  std::unique_ptr<sensor_msgs::PointCloud2Iterator<uint32_t>> iter_t_ptr;
   if (include_ring_timestamp)
   {
     iter_ring_ptr.reset(new sensor_msgs::PointCloud2Iterator<uint16_t>(ros_msg, "ring"));
-    iter_timestamp_ptr.reset(new sensor_msgs::PointCloud2Iterator<double>(ros_msg, "timestamp"));
+    iter_t_ptr.reset(new sensor_msgs::PointCloud2Iterator<uint32_t>(ros_msg, "t"));
   }
 
   auto copy_point = [&](const LidarPointCloudMsg::PointT& point)
@@ -340,10 +340,10 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
     if (include_ring_timestamp)
     {
       **iter_ring_ptr = point.ring;
-      **iter_timestamp_ptr = point.timestamp;
+      **iter_t_ptr = (uint32_t)((point.timestamp - rs_msg.timestamp) * 1e9);
 
       ++(*iter_ring_ptr);
-      ++(*iter_timestamp_ptr);
+      ++(*iter_t_ptr);
     }
   };
 
