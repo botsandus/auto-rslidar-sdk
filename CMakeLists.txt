@@ -206,7 +206,8 @@ if(rclcpp_FOUND)
 
   # Composable node shared library
   add_library(rslidar_composable_node SHARED
-    src/manager/node_manager.cpp)
+    src/manager/node_manager.cpp
+    src/manager/rslidar_composable_node.cpp)
 
   target_include_directories(rslidar_composable_node PRIVATE
     ${PROJECT_SOURCE_DIR}/src)
