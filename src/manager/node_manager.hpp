@@ -35,6 +35,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "utility/yaml_reader.hpp"
 #include "source/source.hpp"
 
+#ifdef ROS2_FOUND
+#include <rclcpp/rclcpp.hpp>
+#endif
+
 namespace robosense
 {
 namespace lidar
@@ -45,6 +49,9 @@ class NodeManager
 public:
 
   void init(const YAML::Node& config);
+#ifdef ROS2_FOUND
+  void init(const YAML::Node& config, std::shared_ptr<rclcpp::Node> external_node);
+#endif
   void start();
   void stop();
 

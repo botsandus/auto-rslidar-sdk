@@ -141,7 +141,8 @@ if(rclcpp_FOUND)
   find_package(ament_cmake REQUIRED)
   find_package(sensor_msgs REQUIRED)
   find_package(rslidar_msg REQUIRED)
-  find_package(std_msgs REQUIRED)                      
+  find_package(std_msgs REQUIRED)
+  find_package(rclcpp_components REQUIRED)
 
 else(rclcpp_FOUND)
   message(=============================================================)
@@ -202,6 +203,31 @@ if(rclcpp_FOUND)
     launch
     rviz
     DESTINATION share/${PROJECT_NAME})
+
+  # Composable node shared library
+  add_library(rslidar_composable_node SHARED
+    src/manager/node_manager.cpp)
+
+  target_include_directories(rslidar_composable_node PRIVATE
+    ${PROJECT_SOURCE_DIR}/src)
+
+  target_link_libraries(rslidar_composable_node
+    ${YAML_CPP_LIBRARIES}
+    ${rs_driver_LIBRARIES})
+
+  ament_target_dependencies(rslidar_composable_node
+    rclcpp
+    std_msgs
+    sensor_msgs
+    rslidar_msg
+    rclcpp_components)
+
+  rclcpp_components_register_nodes(rslidar_composable_node "robosense::lidar::RslidarComposableNode")
+
+  install(TARGETS rslidar_composable_node
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin)
 
   ament_package()
 
