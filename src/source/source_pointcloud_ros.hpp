@@ -454,7 +454,10 @@ inline void DestinationPointCloudRos::init(const YAML::Node& config)
   std::string ros_send_imu_data_topic;
   yamlRead<std::string>(config["ros"],
       "ros_send_imu_data_topic", ros_send_imu_data_topic, "rslidar_imu_data");
-  imu_pub_ = node_ptr_->create_publisher<sensor_msgs::msg::Imu>(ros_send_imu_data_topic, 1000);
+  if (!ros_send_imu_data_topic.empty())
+  {
+    imu_pub_ = node_ptr_->create_publisher<sensor_msgs::msg::Imu>(ros_send_imu_data_topic, 1000);
+  }
 #endif
 
 }
@@ -466,7 +469,10 @@ inline void DestinationPointCloudRos::sendPointCloud(const LidarPointCloudMsg& m
 #ifdef ENABLE_IMU_DATA_PARSE
 inline void DestinationPointCloudRos::sendImuData(const std::shared_ptr<ImuData> & data)
 {
-  imu_pub_->publish(toRosMsg(data, frame_id_));
+  if (imu_pub_)
+  {
+    imu_pub_->publish(toRosMsg(data, frame_id_));
+  }
 }
 #endif
 }  // namespace lidar
