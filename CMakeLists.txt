@@ -189,11 +189,11 @@ endif(roscpp_FOUND)
 #Ros2#
 if(rclcpp_FOUND)
 
-  ament_target_dependencies(rslidar_sdk_node 
-    rclcpp 
-    std_msgs 
-    sensor_msgs 
-    rslidar_msg)
+  target_link_libraries(rslidar_sdk_node
+    ${rclcpp_TARGETS}
+    ${std_msgs_TARGETS}
+    ${sensor_msgs_TARGETS}
+    ${rslidar_msg_TARGETS})
 
   install(TARGETS
     rslidar_sdk_node
@@ -216,12 +216,12 @@ if(rclcpp_FOUND)
     ${YAML_CPP_LIBRARIES}
     ${rs_driver_LIBRARIES})
 
-  ament_target_dependencies(rslidar_composable_node
-    rclcpp
-    std_msgs
-    sensor_msgs
-    rslidar_msg
-    rclcpp_components)
+  target_link_libraries(rslidar_composable_node
+    ${rclcpp_TARGETS}
+    ${std_msgs_TARGETS}
+    ${sensor_msgs_TARGETS}
+    ${rslidar_msg_TARGETS}
+    ${rclcpp_components_TARGETS})
 
   rclcpp_components_register_nodes(rslidar_composable_node "robosense::lidar::RslidarComposableNode")
 
