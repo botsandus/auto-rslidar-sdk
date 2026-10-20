@@ -186,6 +186,8 @@ sensor_msgs::Imu toRosMsg(const std::shared_ptr<ImuData>& data, const std::strin
 
   imu_msg.header.stamp = imu_msg.header.stamp.fromSec(data->timestamp);
   imu_msg.header.frame_id = frame_id;
+  imu_msg.orientation.w = 1.0;
+  imu_msg.orientation_covariance[0] = -1.0;  // No attitude estimate is supplied.
   // Set IMU data
   imu_msg.angular_velocity.x = data->angular_velocity_x;
   imu_msg.angular_velocity.y = data->angular_velocity_y;
@@ -263,6 +265,7 @@ inline void DestinationPointCloudRos::sendImuData(const std::shared_ptr<ImuData>
 
 #ifdef ROS2_FOUND
 #include <rclcpp/rclcpp.hpp>
+#include "source/safety_airy_diagnostics.hpp"
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #ifdef ENABLE_IMU_DATA_PARSE
   #include <sensor_msgs/msg/imu.hpp>
@@ -276,7 +279,7 @@ namespace lidar
 {
 
 inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, const std::string& frame_id,
-                                               bool send_by_rows, bool include_ring_timestamp)
+                                               bool send_by_rows, bool include_ring_timestamp, bool include_feature = false)
 {
   sensor_msgs::msg::PointCloud2 ros_msg;
 
@@ -304,9 +307,17 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
   if (include_ring_timestamp)
   {
     offset = addPointField(ros_msg, "ring", 1, sensor_msgs::msg::PointField::UINT16, offset);
+    // Keep the new feature-bearing format aligned for ROS typed iterators.
+    // Existing XYZIRT consumers retain their current field layout.
+    if (include_feature) offset = (offset + 3) & ~3;
     offset = addPointField(ros_msg, "t", 1, sensor_msgs::msg::PointField::UINT32, offset);
   }
 
+#if defined(POINT_TYPE_XYZIF) || defined(POINT_TYPE_XYZIRTF)
+  if (include_feature)
+    offset = addPointField(ros_msg, "feature", 1, sensor_msgs::msg::PointField::UINT8, offset);
+#endif
+  if (include_feature) offset = (offset + 3) & ~3;
   ros_msg.point_step = offset;
   ros_msg.row_step = ros_msg.width * ros_msg.point_step;
   ros_msg.is_dense = rs_msg.is_dense;
@@ -325,6 +336,11 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
     iter_t_ptr.reset(new sensor_msgs::PointCloud2Iterator<uint32_t>(ros_msg, "t"));
   }
 
+#if defined(POINT_TYPE_XYZIF) || defined(POINT_TYPE_XYZIRTF)
+  std::unique_ptr<sensor_msgs::PointCloud2Iterator<uint8_t>> iter_feature_ptr;
+  if (include_feature)
+    iter_feature_ptr.reset(new sensor_msgs::PointCloud2Iterator<uint8_t>(ros_msg, "feature"));
+#endif
   auto copy_point = [&](const LidarPointCloudMsg::PointT& point)
   {
     *iter_x_ = point.x;
@@ -337,6 +353,13 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
     ++iter_z_;
     ++iter_intensity_;
 
+#if defined(POINT_TYPE_XYZIF) || defined(POINT_TYPE_XYZIRTF)
+    if (include_feature)
+    {
+      **iter_feature_ptr = point.feature;
+      ++(*iter_feature_ptr);
+    }
+#endif
     if (include_ring_timestamp)
     {
       **iter_ring_ptr = point.ring;
@@ -378,6 +401,8 @@ sensor_msgs::msg::Imu toRosMsg(const std::shared_ptr<ImuData>& data, const std::
 
   imu_msg.header.stamp = rclcpp::Time(static_cast<uint64_t>(data->timestamp * 1e9));
   imu_msg.header.frame_id = frame_id;
+  imu_msg.orientation.w = 1.0;
+  imu_msg.orientation_covariance[0] = -1.0;  // No attitude estimate is supplied.
   // Set IMU data
   imu_msg.angular_velocity.x = data->angular_velocity_x;
   imu_msg.angular_velocity.y = data->angular_velocity_y;
@@ -395,6 +420,10 @@ public:
 
   virtual void init(const YAML::Node& config);
   virtual void sendPointCloud(const LidarPointCloudMsg& msg);
+  void sendSafetyAiryStatus(const SafetyAiryStatus& status, double age_seconds) override
+  {
+    if (diagnostics_pub_) diagnostics_pub_->publish(toSafetyAiryDiagnostics(status, age_seconds, frame_id_));
+  }
 #ifdef ENABLE_IMU_DATA_PARSE
   virtual void sendImuData(const std::shared_ptr<ImuData> & data);
 #endif
@@ -408,7 +437,10 @@ private:
 #ifdef ENABLE_IMU_DATA_PARSE
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
 #endif
+  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_;
   std::string frame_id_;
+  std::string imu_frame_id_;
+  bool include_feature_ = false;
   bool send_by_rows_;
   bool include_ring_timestamp_;
 };
@@ -433,7 +465,13 @@ inline void DestinationPointCloudRos::init(const YAML::Node& config)
   std::string point_type;
   yamlRead<std::string>(config["ros"],
       "ros_point_type", point_type, "XYZI");
-  include_ring_timestamp_ = (point_type == "XYZIRT");
+  include_ring_timestamp_ = (point_type == "XYZIRT" || point_type == "XYZIRTF");
+  include_feature_ = (point_type == "XYZIF" || point_type == "XYZIRTF");
+#if !defined(POINT_TYPE_XYZIF) && !defined(POINT_TYPE_XYZIRTF)
+  if (include_feature_)
+    throw std::runtime_error("Feature publishing requires building with -DPOINT_TYPE=XYZIRTF or XYZIF");
+#endif
+  yamlRead<std::string>(config["ros"], "ros_imu_frame_id", imu_frame_id_, frame_id_);
 
   RS_INFO << "PointCloud2 point_type: " << point_type
           << (include_ring_timestamp_ ? " (with ring+timestamp)" : " (x,y,z,intensity only)") << RS_REND;
@@ -448,6 +486,12 @@ inline void DestinationPointCloudRos::init(const YAML::Node& config)
     node_ptr_.reset(new rclcpp::Node(node_name.str()));
   }
 
+  if (config["driver"]["lidar_type"].as<std::string>() == "RSSAFETYAIRY")
+  {
+    std::string topic;
+    yamlRead<std::string>(config["ros"], "ros_send_diagnostics_topic", topic, "safety_airy/diagnostics");
+    diagnostics_pub_ = node_ptr_->create_publisher<diagnostic_msgs::msg::DiagnosticArray>(topic, 10);
+  }
   pub_ = node_ptr_->create_publisher<sensor_msgs::msg::PointCloud2>(ros_send_topic, ros_queue_length);
 
 #ifdef ENABLE_IMU_DATA_PARSE
@@ -461,16 +505,15 @@ inline void DestinationPointCloudRos::init(const YAML::Node& config)
 
 inline void DestinationPointCloudRos::sendPointCloud(const LidarPointCloudMsg& msg)
 {
-  pub_->publish(toRosMsg(msg, frame_id_, send_by_rows_, include_ring_timestamp_));
+  pub_->publish(toRosMsg(msg, frame_id_, send_by_rows_, include_ring_timestamp_, include_feature_));
 }
 #ifdef ENABLE_IMU_DATA_PARSE
 inline void DestinationPointCloudRos::sendImuData(const std::shared_ptr<ImuData> & data)
 {
-  imu_pub_->publish(toRosMsg(data, frame_id_));
+  imu_pub_->publish(toRosMsg(data, imu_frame_id_));
 }
 #endif
 }  // namespace lidar
 }  // namespace robosense
 
 #endif
-

@@ -36,6 +36,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rs_driver/api/lidar_driver.hpp>
 #include <rs_driver/utility/sync_queue.hpp>
+#include <atomic>
+#include <chrono>
+#include <mutex>
 
 namespace robosense
 {
@@ -74,7 +77,11 @@ protected:
   std::thread imu_data_process_thread_;
 #endif
   std::thread point_cloud_process_thread_;
-  bool to_exit_process_;
+  std::atomic<bool> to_exit_process_;
+  bool safety_status_enabled_ = false;
+  std::mutex safety_status_mutex_;
+  SafetyAiryStatus safety_status_;
+  std::chrono::steady_clock::time_point safety_status_received_;
 };
 
 SourceDriver::SourceDriver(SourceType src_type)
@@ -156,11 +163,14 @@ inline void SourceDriver::init(const YAML::Node& config)
       std::bind(&SourceDriver::putPointCloud, this, std::placeholders::_1));
   driver_ptr_->regExceptionCallback(
       std::bind(&SourceDriver::putException, this, std::placeholders::_1));
-  point_cloud_process_thread_ = std::thread(std::bind(&SourceDriver::processPointCloud, this));
-
+  safety_status_enabled_ = driver_param.lidar_type == LidarType::RSSAFETYAIRY;
+  driver_ptr_->regSafetyAiryStatusCallback([this](const SafetyAiryStatus& status) {
+    std::lock_guard<std::mutex> lock(safety_status_mutex_);
+    safety_status_ = status;
+    safety_status_received_ = std::chrono::steady_clock::now();
+  });
 #ifdef ENABLE_IMU_DATA_PARSE
   driver_ptr_->regImuDataCallback(std::bind(&SourceDriver::getImuData, this),std::bind(&SourceDriver::putImuData, this, std::placeholders::_1));
-  imu_data_process_thread_ = std::thread(std::bind(&SourceDriver::processImuData, this));
 #endif
 
   if (!driver_ptr_->init(driver_param))
@@ -172,6 +182,14 @@ inline void SourceDriver::init(const YAML::Node& config)
 
 inline void SourceDriver::start()
 {
+  // Destinations are registered between init() and start(). Diagnostics may
+  // publish before the first cloud, so do not start workers during init().
+  if (point_cloud_process_thread_.joinable()) return;
+  to_exit_process_ = false;
+  point_cloud_process_thread_ = std::thread(std::bind(&SourceDriver::processPointCloud, this));
+#ifdef ENABLE_IMU_DATA_PARSE
+  imu_data_process_thread_ = std::thread(std::bind(&SourceDriver::processImuData, this));
+#endif
   driver_ptr_->start();
 }
 
@@ -182,10 +200,12 @@ inline SourceDriver::~SourceDriver()
 
 inline void SourceDriver::stop()
 {
-  driver_ptr_->stop();
-
+  if (driver_ptr_) driver_ptr_->stop();
   to_exit_process_ = true;
-  point_cloud_process_thread_.join();
+  if (point_cloud_process_thread_.joinable()) point_cloud_process_thread_.join();
+#ifdef ENABLE_IMU_DATA_PARSE
+  if (imu_data_process_thread_.joinable()) imu_data_process_thread_.join();
+#endif
 }
 
 inline std::shared_ptr<LidarPointCloudMsg> SourceDriver::getPointCloud(void)
@@ -250,8 +270,22 @@ void SourceDriver::processImuData()
 #endif
 void SourceDriver::processPointCloud()
 {
+  auto next_status = std::chrono::steady_clock::now();
   while (!to_exit_process_)
   {
+    const auto now = std::chrono::steady_clock::now();
+    if (safety_status_enabled_ && now >= next_status)
+    {
+      SafetyAiryStatus status;
+      double age;
+      {
+        std::lock_guard<std::mutex> lock(safety_status_mutex_);
+        status = safety_status_;
+        age = status.valid ? std::max(0.0, std::chrono::duration<double>(now - safety_status_received_).count()) : -1.0;
+      }
+      sendSafetyAiryStatus(status, age);
+      next_status = now + std::chrono::milliseconds(100);
+    }
     std::shared_ptr<LidarPointCloudMsg> msg = point_cloud_queue_.popWait(1000);
     if (msg.get() == NULL)
     {

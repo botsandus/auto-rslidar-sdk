@@ -1,0 +1,36 @@
+# Observed pre-production 96-channel, single-return profile.
+# Build with -DPOINT_TYPE=XYZIRTF to preserve the two raw range flag bits.
+common:
+  msg_source: 1
+  send_packet_ros: true
+  send_point_cloud_ros: true
+lidar:
+  - driver:
+      lidar_type: RSSAFETYAIRY
+      host_address: 192.168.1.102
+      msop_port: 6699
+      difop_port: 7788
+      imu_port: 6688
+      socket_recv_buf: 4194304
+      wait_for_difop: true
+      use_lidar_clock: false
+      min_distance: 0.1
+      max_distance: 60.0
+      dense_points: false
+      ts_first_point: true
+      split_frame_mode: 1
+      split_angle: 0
+      start_angle: 0
+      end_angle: 360
+    ros:
+      ros_frame_id: safety_airy
+      # Raw IMU axes; no invented transform from the all-zero DIFOP extrinsic.
+      ros_imu_frame_id: safety_airy_imu
+      ros_point_type: XYZIRTF
+      ros_send_by_rows: false
+      ros_send_point_cloud_topic: /safety_airy/points
+      ros_send_imu_data_topic: /safety_airy/imu
+      ros_send_diagnostics_topic: /safety_airy/diagnostics
+      ros_send_packet_topic: /safety_airy/packets
+      ros_recv_packet_topic: /safety_airy/packets
+      ros_queue_length: 10
