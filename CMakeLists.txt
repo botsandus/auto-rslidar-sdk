@@ -5,7 +5,8 @@ project(rslidar_sdk)
 #=======================================
 # Custom Point Type (XYZI,XYZIRT, XYZIF, XYZIRTF)
 #=======================================
-set(POINT_TYPE XYZIRT)
+set(POINT_TYPE XYZIRT CACHE STRING "Point type: XYZI, XYZIRT, XYZIF or XYZIRTF")
+set_property(CACHE POINT_TYPE PROPERTY STRINGS XYZI XYZIRT XYZIF XYZIRTF)
 
 option(ENABLE_TRANSFORM "Enable transform functions" OFF)
 if(${ENABLE_TRANSFORM})
@@ -136,10 +137,11 @@ if(rclcpp_FOUND)
 
   add_definitions(-DROS2_FOUND)
   include_directories(${rclcpp_INCLUDE_DIRS})
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
 
   find_package(ament_cmake REQUIRED)
   find_package(sensor_msgs REQUIRED)
+  find_package(diagnostic_msgs REQUIRED)
   find_package(rslidar_msg REQUIRED)
   find_package(std_msgs REQUIRED)
   find_package(rclcpp_components REQUIRED)
@@ -157,6 +159,9 @@ find_package(yaml-cpp REQUIRED)
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
 #Driver core#
+if(COMPILE_TESTS)
+  enable_testing()
+endif()
 add_subdirectory(src/rs_driver)
 find_package(rs_driver REQUIRED)
 include_directories(${rs_driver_INCLUDE_DIRS})
@@ -193,6 +198,7 @@ if(rclcpp_FOUND)
     ${rclcpp_TARGETS}
     ${std_msgs_TARGETS}
     ${sensor_msgs_TARGETS}
+    ${diagnostic_msgs_TARGETS}
     ${rslidar_msg_TARGETS})
 
   install(TARGETS
@@ -201,6 +207,7 @@ if(rclcpp_FOUND)
 
   install(DIRECTORY
     launch
+    config
     rviz
     DESTINATION share/${PROJECT_NAME})
 
@@ -220,6 +227,7 @@ if(rclcpp_FOUND)
     ${rclcpp_TARGETS}
     ${std_msgs_TARGETS}
     ${sensor_msgs_TARGETS}
+    ${diagnostic_msgs_TARGETS}
     ${rslidar_msg_TARGETS}
     ${rclcpp_components_TARGETS})
 
@@ -230,7 +238,15 @@ if(rclcpp_FOUND)
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin)
 
+  if(COMPILE_TESTS AND POINT_TYPE STREQUAL "XYZIRTF")
+    find_package(GTest REQUIRED)
+    add_executable(safety_airy_ros_test test/safety_airy_ros_test.cpp)
+    target_link_libraries(safety_airy_ros_test GTest::gtest_main
+      ${YAML_CPP_LIBRARIES} ${rs_driver_LIBRARIES}
+      ${rclcpp_TARGETS} ${sensor_msgs_TARGETS} ${diagnostic_msgs_TARGETS})
+    add_test(NAME safety_airy_ros COMMAND safety_airy_ros_test)
+  endif()
+
   ament_package()
 
 endif(rclcpp_FOUND)
-

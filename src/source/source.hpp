@@ -35,6 +35,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "msg/rs_msg/lidar_point_cloud_msg.hpp"
 #include "utility/yaml_reader.hpp"
 #include <rs_driver/msg/packet.hpp>
+#include <rs_driver/msg/safety_airy_status.hpp>
 
 
 namespace robosense
@@ -51,6 +52,7 @@ public:
   virtual void start() {}
   virtual void stop() {}
   virtual void sendPointCloud(const LidarPointCloudMsg& msg) = 0;
+  virtual void sendSafetyAiryStatus(const SafetyAiryStatus&, double age_seconds) {}
 #ifdef ENABLE_IMU_DATA_PARSE
   virtual void sendImuData(const std::shared_ptr<ImuData>& msg) = 0;
 #endif
@@ -91,6 +93,10 @@ public:
 
 protected:
 
+  void sendSafetyAiryStatus(const SafetyAiryStatus& status, double age_seconds)
+  {
+    for (const auto& dst : pc_cb_vec_) dst->sendSafetyAiryStatus(status, age_seconds);
+  }
   void sendPacket(const Packet& msg);
   void sendPointCloud(std::shared_ptr<LidarPointCloudMsg> msg);
 #ifdef ENABLE_IMU_DATA_PARSE
